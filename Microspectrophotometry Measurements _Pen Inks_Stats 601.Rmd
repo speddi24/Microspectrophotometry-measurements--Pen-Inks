@@ -1,0 +1,280 @@
+---
+title: "FINAL PROJECT-Question 2"
+author: "SNIGDHA PEDDI"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message=F,warning=F,echo=F,fig_height=10,fig_width=7,cache = F)
+```
+
+```{r Libraries}
+#install.packages("dplyr")
+library(dplyr)
+#install.packages("ggplot2")
+library(ggplot2)
+#install.packages("tidyr")
+library(tidyr)
+#install.packages("HSAUR3")
+library(HSAUR3)
+#install.packages("data.table")
+library(data.table)
+#install.packages("lattice")
+library(lattice)
+#install.packages("quantreg")
+library("quantreg")
+#install.packages("coin")
+library(coin)
+#install.packages("multcomp")
+library(multcomp)
+#install.packages("sandwich")
+library(sandwich)
+#install.packages("lme4")
+library(lme4)
+#install.packages("Flury")
+library(Flury)
+#install.packages("corrplot")
+library(corrplot)
+#install.packages("caret")
+library(caret)
+#install.packages("GGally")
+library(GGally)
+#install.packages("ISLR")
+#library(ISLR)
+#install.packages("boot")
+library(boot)
+#install.packages("mgcv")
+library(mgcv)
+#install.packages("mboost")
+library(mboost)
+#install.packages("leaps")
+library(leaps)
+```
+
+
+### INTRODUCTION
+
+  This data set consists of the log likelihood ratios for pairwise comparison of fourty inks obtained by paramertisation of spectra from microspectrometry in the visible range. Ten replicates of the fourty inks were parametrised and log likelihood ratios were calculated which is like a similarity score and is called Forensic likelihood ratio.The pairwise comparisons were calculated under propositions implying that any ink from the evidence document came from same pen vs it came from some other pen. The three univariate LR's corresponding to the "x","y","Z" measures of the color are part of this data set.The data set consists of 6 variables, Comparison of interest (1-820),log values of omnibus likelihood ratio(Dependent variable),Type of comparison("wi"-within source comparison and "bw"- between source comparison),Log likelihood ratio of x color variable,Log likelihood ratio of y color variable,Log likelihood ratio of z color variable.The relationship between these univariate LR's and omnibus LR constructed by Dr. Saunders will be analyzed.
+
+### ANALYSIS AND DISCUSSION
+
+#### Exploratory Data Analysis
+
+   The Comma Separated File is imported.The dimensions of the data set and presence of missing values were verified.And the summary of the data set give a basic idea of values in the data set (mean ,median values etc.).
+   
+  
+```{r Code Chunk-1}
+# Reading the Excel file
+omni <-read.csv ("G:\\STATS 601\\Final Project\\dat.LLR.int.csv")
+
+#Dropping Extra Column
+drops1 <- c("X")
+omni <- omni[ , !(names(omni) %in% drops1)]
+
+#Reading the head of the dataset
+#head(omni)
+```
+
+```{r Code Chunk-2}
+# Dimensions of the Dataset
+dim (omni)
+
+# Converting the Type variable to factor
+omni <-omni %>% mutate_if(is.character, as.factor) 
+
+#To check if there are any missing variables
+
+cat("\n Number of missing values in dataset:",omni %>% is.na() %>% sum())
+
+cat("\n\n")
+
+# Summary of Data set
+summary(omni)
+cat("\n\n")
+```
+
+  Correlation between the variables is reviewed by plotting the data using ggpairs function.From the plot it is clear that the three LR's do not have a linear relation to omnibus LR. To study the relationship between these variables inear models with spline smoothing will be fit and analyzed.Generalized Additive Models(GAM) will be fit for this purpose. GAM's give us a framework to model flexible nonlinear relationships and use basis functions to make smooth curves.
+
+
+```{r Code Chunk-3, fig.width=8,fig.height=7}
+# Correlation Plot
+ggpairs(omni,title="Correlation Plot :ggplot")
+```
+  
+### Fitting the Models and Discussion  
+  
+  To check if there is any relationship between variables, aov() function is used. The lower pvalues indicate that at 95% confidence interval all the variables are related significantly.
+  
+  
+```{r Code Chunk-4}
+#aov analysis of the data
+omni.aov <-aov(Omni.LLR.int ~ (LLR.x)+(LLR.y)+(LLR.z)+Type,data=omni)
+cat("Model: \n\n")
+formula(omni.aov)
+cat(" \n\n")
+# Summary of the model
+summary(omni.aov)
+
+```
+  
+  Linear regression models were fit with splines to explain the relationship between Omnibus LR and other LR's.
+  A GAM model is fit between the 3 univariate LR's and omnibus LR without smoothing. The p values indicate a strong relationship between the variables. However the analysis is contuned to verify the effect of spline on the variables.
+  A GAM model is fit between the 3 univariate LR's and omnibus LR. The p values indicate a strong relationship between the variables. From the plots it is clear that they have a non-linear relationship. The omnibus LR values increases slowly with increase in the LLR.x and around a value of 3 then tend to decrease.The omni bus values increase slowly with increase in LLR.y LR around -0.5 and then tend to reduce around value of 2 and then slowly increase toward the higher likelihood values.Similar non linear patter is observed with LLR.z where values slowly decrease and start increasing around -0.5 and decrease around likelihood values of 3.
+  
+   
+  
+```{r Code Chunk-5}
+# Fitting a gam model
+gam0<-gam(Omni.LLR.int ~ LLR.x+LLR.y+LLR.z,data=omni)
+cat("Model: \n\n")
+formula(gam0)
+cat("\n")
+#Summary of the model
+#summary(gam0)
+
+cat("Table of Linear terms and Intercept: \n\n")
+summary(gam0)$p.table
+
+
+```
+  
+  
+```{r Code CHunk-6}
+# Fitting a gam model
+gam1 <-gam(Omni.LLR.int ~ s(LLR.x)+s(LLR.y)+s(LLR.z),data=omni)
+cat("Model: \n\n")
+formula(gam1)
+cat("\n")
+#Summary of the model
+#summary(gam1)
+
+cat("Table of Linear terms and Intercept: \n\n")
+summary(gam1)$p.table
+cat("\n\n Table of Smooth Terms : \n\n")
+summary(gam1)$s.table
+
+#Plot of the model
+plot(gam1)
+```
+
+  Added an interaction term of Type variable with the LLR's show that variables have significant relationship with the type of comparison if they are within source comparison or between source comparison.In presence of the interaction term, though the relationship is non-linear the values are spread out and different for LLR.y where the likelihood values decrease until -0.5 significantly and then tend to increase and then decrease around value of 2.
+  
+  
+```{r Code Chunk-7}
+
+# Fitting a gam model
+gam2 <-gam(Omni.LLR.int ~ s(LLR.x)+s(LLR.y)+s(LLR.z)+Type:(LLR.x+LLR.y+LLR.z),data=omni)
+cat("Model: \n\n")
+formula(gam2)
+cat("\n")
+#Summary of the model
+#summary(gam2)
+
+cat("Table of Linear terms and Intercept: \n\n")
+summary(gam2)$p.table
+cat("\n\n Table of Smooth Terms : \n\n")
+summary(gam2)$s.table
+
+#Plot of the model
+plot(gam2)
+
+
+```
+
+  GAM model with LR's from x,y,z measures with their spline interaction term indicate that all the terms are significant at 95% confidence interval.
+  
+  
+```{r Code Chunk-8}
+# Fitting a gam model
+gam3<-gam(Omni.LLR.int ~ LLR.x+LLR.y+LLR.z+s(LLR.x+LLR.y+LLR.z),data=omni)
+cat("Model: \n\n")
+formula(gam3)
+cat("\n")
+#Summary of the model
+#summary(gam3)
+
+cat("Table of Linear terms and Intercept: \n\n")
+summary(gam3)$p.table
+cat("\n\n Table of Smooth Terms : \n\n")
+summary(gam3)$s.table
+
+```
+   
+   To check if the addition of the interaction term has improved the model performance anova test is performed between models. A p value of 0.2527 indicate that addition of interaction term did not the model performance.
+Hence, GAM model with no interaction term will be used for further analysis.The GCV score or the generalized cross validation score is an estimate of mean square error of the LOOCV process.Comparing the GCV values and the Adjusted R square values also suggest that the model with the LR's of x,y,z measures with smoothing is best out of the four models.
+   
+   
+```{r Code Chunk-9}
+# Anova between 2 models
+omni.aov2 <-anova(gam1,gam2,test="Chisq")
+omni.aov2
+
+```
+
+
+```{r Code-Chunk-9}
+cat("Comaprison of GCV of models:  \n\n")
+data.frame("GCV_w/o Spline"=gam0$gcv.ubre,"GCV_w Smoothing"=gam1$gcv.ubre,"GCV_w interaction terms"=gam2$gcv.ubre,"GCV_interaction smooting"=gam3$gcv.ubre)
+
+
+cat("Comaprison of Adjusted R-square of models:  \n\n")
+data.frame("R2_w/o Spline"=summary(gam0)$r.sq,"R2_w Smoothing"=summary(gam1)$r.sq,"R2_w interaction terms"=summary(gam2)$r.sq,"R2_interaction smooting"=summary(gam3)$r.sq)
+
+```
+
+  The Quantile plot show that most of the points do not fall within the confidence interval which is a concern.The residual vs.linear predictor plot shows that the spread widening out which is of concern.The histogram looks guassian and left skewed.The Response vs.Fitted values plot have linear fit indicating the model is performing good.The model has to be improved.
+
+
+```{r Code Chunk-10}
+gam.check(gam1,rep=500)
+```
+  
+  *GAMboost()* function is used to fit the GAM model by likelihood based boosting.It provides the smooth function estimates of covariates along with confidence bands and DF.The AIC suggests that the boosting algorithm should be stopped after 100 iterations.The Type and comparison of interest variables are removed by the AIC method and the resulting AIC is very low indicating this model is performing better.The plots of the models shows that the variables are smoothed enough to have a linear relationship with the omnibus LR. The number of degrees of freedom are 10 and are more than the GAM model indicating increased number of base learners and hence improved performance.All the plots show a linear relationship from around -4 likelihood values and until around 3.And the Omnibus LR values decrease with increase in the LR values of other 3 measures towards lower and upper end.
+  
+  
+```{r Code Chunk-11}
+# Building model 
+omni_boost <- gamboost(Omni.LLR.int ~ ., data = omni)
+omni_aic <- AIC(omni_boost)
+omni_aic
+omni_gam <- omni_boost[mstop(omni_aic)]
+
+# Summary of model
+summary(omni_boost)
+#Plot of the model
+par(mfrow=c(2,4))
+plot(omni_boost)
+
+#AIC of plot
+omni_aic <- AIC(omni_boost)
+cat("\n\n","AIC of model:",omni_aic,"\n\n")
+
+
+```
+
+  To confirm the improved model performance analysis of variance is performed between GAM model and GAMboost model.The lower P values indicate that the GAMboost model is better than the GAM model at 95% confidence interval.
+  
+  
+```{r Code Chunk-12}
+# ANOVA of two models
+omni.aov3 <-anova(gam1,omni_boost,test="Chisq")
+# Model results
+omni.aov3
+
+```
+
+
+## CONCLUSION
+
+   Relationship between the Omnibus LR and the three LR's of x,y,z measures is studied.Initial investigation shows a non-linear relationship between the variables and omnibus LR.Generalized Additive Models were fit with smoothing variables of these measures. An Adjusted R square of 0.997 and GCV of 0.036 indicate that the GAM model is performing well. However, the Quantile plot of the model indicate that most of the values are not within the confidence interval and there is room for model improvement. Generalized Additive Model by likelihood based boosting(GAMboost) is fit. The model indicates an increased number of degrees of freedom which in turn indicates increased number of parameters involved and hence improved model.To confirm that the GAmboost model has improved performance over the GAM model anova of the models is performed and the lower p values show that the GAMboost model has improved performance.The plot of the model shows a linear relationship between the x,y,z measures to the omnibus LR. Between likelihood values of -0.4 and around 3 with increase in the values of the measures the omnibus LR increases whereas towards the lower and higher side, omnibus LR decreases with increase in other three measures.
+   
+   
+## REFERENCES
+
+- Snigdha Peddi,*Stat 601 Homework Assignment 6*
+
+- Snigdha Peddi,*Stat 601 Homework Assignment 9*
+
+- Lecture by Gavin Simpson,*Introduction to Generalized Additive Models with R and mgcv*,July 30,2020,(https://www.youtube.com/watch?v=sgw4cu8hrZM)
+
+- Lecture from DataCamp,*Introduction to Generalized Additive Models*,April 13,2020,(https://www.youtube.com/watch?v=6V_VvweZkoI)
